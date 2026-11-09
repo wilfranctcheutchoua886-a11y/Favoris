@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Favoris du jour</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#111c3a">
+<link rel="icon" href="icon-192.png">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:sans-serif;background:#0f172a;color:#fff}
+header{padding:14px;text-align:center;background:#111c3a;font-weight:bold;font-size:18px}
+header small{display:block;font-weight:normal;font-size:12px;color:#94a3b8;margin-top:3px}
+nav{display:flex;background:#000}
+nav button{flex:1;padding:12px;border:0;background:#000;color:#94a3b8;font-size:14px}
+nav button.on{color:#fff;border-bottom:3px solid #22c55e}
+select{width:calc(100% - 24px);margin:6px 12px;padding:11px;font-size:15px;border-radius:8px;border:0}
+input{width:100%;padding:11px;font-size:15px;border-radius:8px;border:0;margin:8px 0}
+.cb{display:flex;align-items:center;gap:12px;padding:9px 0;font-size:15px}
+.cb input{width:22px;height:22px;margin:0;padding:0}
+.carte{background:#1e293b;margin:10px 12px;padding:12px;border-radius:12px}
+.ligne{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ligue{font-size:12px;color:#94a3b8}
+.fav{font-size:18px;font-weight:bold;margin:6px 0}
+.barre{height:10px;background:#334155;border-radius:5px;overflow:hidden;margin:8px 0}
+.barre div{height:100%}
+.tag{padding:3px 10px;border-radius:12px;font-size:12px;font-weight:bold;color:#000;white-space:nowrap}
+.forte{background:#22c55e}.moy{background:#facc15}.inc{background:#f87171}
+.detail{font-size:13px;color:#cbd5e1}
+.ok{font-size:12px;color:#22c55e;margin-top:4px}
+.ko{font-size:12px;color:#facc15;margin-top:4px}
+details{margin-top:8px;font-size:13px;color:#cbd5e1}
+summary{padding:6px 0;color:#38bdf8;font-weight:bold}
+.mk div{padding:5px 0;border-top:1px solid #334155;line-height:1.5}
+.test{margin:8px 0;font-size:13px;line-height:1.6;color:#e2e8f0}
+button.act{padding:9px 14px;border:0;border-radius:8px;background:#22c55e;color:#000;font-weight:bold;font-size:14px;margin-top:8px;margin-right:6px}
+button.non{background:#f87171}
+button.gris{background:#475569;color:#fff}
+.avert{margin:12px;padding:10px;font-size:12px;color:#94a3b8;text-align:center;line-height:1.4}
+.demo{margin:12px;padding:8px;background:#7c2d12;border-radius:8px;font-size:12px;text-align:center}
+.err{margin:12px;padding:8px;background:#7f1d1d;border-radius:8px;font-size:12px;text-align:center;word-break:break-word}
+.info{margin:12px;font-size:12px;color:#94a3b8;text-align:center;word-break:break-word}
+.stat{margin:12px;padding:14px;background:#1e293b;border-radius:12px;text-align:center;font-size:17px}
+</style>
+</head>
+<body>
+<header>🏆 Favoris du jour<small id="date"></small></header>
+<nav>
+  <button data-do="tab" data-tab="fav">Favoris</button>
+  <button data-do="tab" data-tab="hist">Historique</button>
+  <button data-do="tab" data-tab="reg">Réglages</button>
+</nav>
+<div id="app"></div>
+<script>
+window.onerror=function(m,s,l){document.getElementById('app').innerHTML='<div class="err">Erreur dans le code : '+m+' (ligne '+l+')</div>'};
+</script>
+
+<script>
+/* ===== 1) RÉGLAGES ===== */
+const SPORTS={
+ foot:{nom:'Football',api:'https://v3.football.api-sports.io',unite:'buts',icone:'⚽'},
+ basket:{nom:'Basketball',api:'https://v1.basketball.api-sports.io',unite:'points',icone:'🏀'},
+ hand:{nom:'Handball',api:'https://v1.handball.api-sports.io',unite:'buts',icone:'🤾'}
+};
+let SPORT=(function(){try{const s=localStorage.getItem('sport');return SPORTS[s]?s:'foot'}catch(e){return 'foot'}})();
+const MAXREQ=10;              // requêtes de cotes maximum par chargement (protège ton quota)
+const MAXPL=2;                // football : pages de cotes maximum par championnat
+const MAXPD=3;                // football : pages maximum en lecture par date (plan gratuit : 3)
+const DUREE=6*3600*1000;      // les données restent en mémoire 6 h
+const TOP=30;                 // nombre de matchs affichés
+const TOPS=60;                // nombre de sélections affichées
+const TOPP=5;                 // football : favoris affinés avec les prévisions API
+
+// Football : championnats prioritaires (numéro API-Football, nom) chargés en premier
+const LIGUES_DISPO=[
+ [39,'Premier League (Angleterre)'],
+ [140,'Liga (Espagne)'],
+ [135,'Serie A (Italie)'],
+ [78,'Bundesliga (Allemagne)'],
+ [61,'Ligue 1 (France)'],
+ [2,'Ligue des champions'],
+ [3,'Ligue Europa'],
+ [88,'Eredivisie (Pays-Bas)'],
+ [94,'Primeira Liga (Portugal)'],
+ [40,'Championship (Angleterre)'],
+ [203,'Süper Lig (Turquie)'],
+ [307,'Saudi Pro League'],
+ [253,'MLS (USA)'],
+ [71,'Brasileirão (Brésil)'],
+ [128,'Liga Profesional (Argentine)'],
+ [12,'Ligue des champions CAF'],
+ [6,'Coupe d\'Afrique des nations'],
+ [1,'Coupe du monde']
+];
+
+const DEMO_BRUT=[
+ {id:'d1',ligue:'Premier League',heure:'17:00',dom:'Manchester City',ext:'Brighton',cotes:[[1.45,4.8,7.0],[1.42,5.0,7.5],[1.48,4.7,6.8]],ou:{'1.5':84,'2.5':66,'3.5':43},bt:52,sc:[['2:0',11],['3:0',10],['2:1',9]]},
+ {id:'d2',ligue:'Liga',heure:'18:30',dom:'Real Madrid',ext:'Getafe',cotes:[[1.50,4.2,6.5],[1.48,4.3,6.8],[1.52,4.1,6.4]],ou:{'1.5':80,'2.5':58,'3.5':34},bt:45,sc:[['2:0',12],['1:0',11],['3:0',9]]},
+ {id:'d3',ligue:'Serie A',heure:'20:45',dom:'Inter',ext:'Torino',cotes:[[1.55,4.0,6.0],[1.53,4.1,6.3],[1.57,3.9,5.9]],ou:{'1.5':78,'2.5':55,'3.5':31},bt:49,sc:[['2:0',11],['2:1',10],['1:0',10]]},
+ {id:'d4',ligue:'Ligue 1',heure:'21:00',dom:'PSG',ext:'Nantes',cotes:[[1.30,5.5,9.5],[1.28,5.8,10],[1.32,5.4,9.2]],ou:{'1.5':89,'2.5':74,'3.5':52},bt:50,sc:[['3:0',11],['2:0',10],['3:1',9]]},
+ {id:'d5',ligue:'Bundesliga',heure:'20:30',dom:'Bayern',ext:'Mainz',cotes:[[1.25,6.5,11],[1.23,6.8,12],[1.27,6.3,10.5]],ou:{'1.5':92,'2.5':80,'3.5':61},bt:55,sc:[['3:0',10],['4:0',9],['3:1',9]]},
+ {id:'d6',ligue:'Ligue 1',heure:'21:00',dom:'Lyon',ext:'Marseille',cotes:[[2.60,3.4,2.70],[2.55,3.5,2.75],[2.65,3.3,2.65]],ou:{'1.5':78,'2.5':56,'3.5':33},bt:60,sc:[['1:1',12],['2:1',9],['1:2',9]]}
+];
+function demo(){
+  return DEMO_BRUT.map(function(m){
+    const hm=m.heure.split(':'), d=new Date();
+    d.setHours(+hm[0],+hm[1],0,0);
+    return {id:m.id,sport:'foot',ligue:m.ligue,debut:d.toISOString(),dom:m.dom,ext:m.ext,cotes:m.cotes,ou:m.ou,bt:m.bt,sc:m.sc};
+  });
+}
+
+/* ===== 2) OUTILS ===== */
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const jour=()=>new Date().toISOString().slice(0,10);
+const dateJ=n=>new Date(Date.now()+n*86400000).toISOString().slice(0,10);
+const pause=ms=>new Promise(function(r){setTimeout(r,ms)});
+function lire(k,d){try{const v=localStorage.getItem(k);return v===null?d:v}catch(e){return d}}
+function ecrire(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function suppr(k){try{localStorage.removeItem(k)}catch(e){}}
+function viderCaches(){try{Object.keys(localStorage).filter(function(k){return k.indexOf('c2')===0}).forEach(function(k){localStorage.removeItem(k)})}catch(e){}}
+function viderDates(){try{Object.keys(localStorage).filter(function(k){return k.indexOf('c2_')===0}).forEach(function(k){localStorage.removeItem(k)})}catch(e){}}
+function viderAnciens(){try{Object.keys(localStorage).filter(function(k){return /^c2_(\d|v2_)/.test(k)}).forEach(function(k){localStorage.removeItem(k)})}catch(e){}}
+function ligSel(){try{return JSON.parse(lire('ligues','[]'))}catch(e){return []}}
+function hist(){try{return JSON.parse(lire('hist','[]'))}catch(e){return []}}
+function sauverHist(h){ecrire('hist',JSON.stringify(h))}
+function quand(iso){
+  const d=new Date(iso), h=d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  const auj=d.toDateString()===new Date().toDateString();
+  return (auj?'':d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric'})+' · ')+h;
+}
+function traduire(m){
+  if(m==='Failed to fetch')return 'Connexion impossible ou quota atteint. Attends 1 minute (ou jusqu\'à 01h00 si le quota du jour est épuisé), puis appuie sur Actualiser.';
+  if(/request limit|limit for the day/i.test(m))return 'Quota du jour atteint (100 requêtes). Il se remet à zéro à 01h00 (heure du Cameroun).';
+  if(/season/i.test(m))return 'Le plan gratuit n\'a pas accès à cette saison ou à cette date pour ce sport. ('+m+')';
+  return m;
+}
+
+/* ===== 3) CALCULS ===== */
+// Cotes -> probabilités (marge du bookmaker retirée), puis moyenne des bookmakers
+// Une cote à 0 (pas de match nul, ex. basketball) compte pour 0 %
+function probas(cotes){
+  const s=[0,0,0];
+  cotes.forEach(function(c){
+    const inv=c.map(function(o){return o>1?1/o:0}), tot=inv[0]+inv[1]+inv[2];
+    inv.forEach(function(v,i){s[i]+=v/tot});
+  });
+  return s.map(function(v){return v/cotes.length*100});
+}
+function analyser(m){
+  const p=probas(m.cotes), dom=p[0]>=p[2];
+  return {m:m,p:p,dom:dom,fav:dom?m.dom:m.ext,pf:dom?p[0]:p[2],nul:p[1],autre:dom?p[2]:p[0],nb:m.cotes.length};
+}
+// Combine les cotes et la prévision API (football) quand elle est disponible
+function final(a){
+  const p=PRED[a.m.id];
+  if(!p||(a.m.sport&&a.m.sport!=='foot'))return {pc:a.pf,accord:null,pp:null};
+  const pp=a.dom?p.h:p.a, pa=a.dom?p.a:p.h;
+  return {pc:(a.pf+pp)/2,accord:pp>pa,pp:pp};
+}
+function niveau(x,accord){
+  let n=x>=65?0:x>=50?1:2;
+  if(accord===false&&n===0)n=1;
+  return [['forte','Confiance forte'],['moy','Confiance moyenne'],['inc','Match incertain']][n];
+}
+// Ne garde que les matchs dont le favori est à « Confiance forte »
+function forts(){
+  return ANA.filter(function(a){const f=final(a);return niveau(f.pc,f.accord)[0]==='forte'});
+}
+// Toutes les sélections possibles d'un match, avec leur probabilité
+function selections(a){
+  const m=a.m,p=a.p,s=[],un=SPORTS[m.sport||'foot'].unite,nul=p[1]>0.5;
+  s.push([m.dom+' gagne',p[0]]);
+  if(nul)s.push(['Match nul',p[1]]);
+  s.push([m.ext+' gagne',p[2]]);
+  if(nul)s.push([m.dom+' ou nul (1X)',p[0]+p[1]],[m.ext+' ou nul (X2)',p[1]+p[2]],['Pas de match nul (12)',p[0]+p[2]]);
+  const ou=m.ou||{};
+  Object.keys(ou).sort().forEach(function(k){
+    s.push(['Plus de '+k+' '+un,ou[k]],['Moins de '+k+' '+un,100-ou[k]]);
+  });
+  if(typeof m.bt==='number'){
+    s.push(['Les 2 équipes marquent : oui',m.bt],['Les 2 équipes marquent : non',100-m.bt]);
+  }
+  return s;
+}
+
+/* ===== 4) API ===== */
+let REST=null,NOTE='',AVANCE='',COUV=null,SEEN={};
+// Limite de 10 requêtes par minute : on en autorise 8 et on attend si besoin
+async function creneau(){
+  for(;;){
+    const now=Date.now();
+    let t=[];
+    try{t=JSON.parse(lire('rl_t','[]'))}catch(e){}
+    t=t.filter(function(x){return now-x<61000});
+    if(t.length<8){t.push(now);ecrire('rl_t',JSON.stringify(t));return}
+    await pause(Math.max(500,61000-(now-t[0])));
+  }
+}
+async function api(chemin,sp){
+  sp=sp||SPORT;
+  await creneau();
+  const r=await fetch(SPORTS[sp].api+chemin,{headers:{'x-apisports-key':lire('cleaf','')}});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const j=await r.json();
+  const er=j.errors;
+  const msg=Array.isArray(er)?er.join(' | '):Object.keys(er||{}).map(function(k){return k+' : '+er[k]}).join(' | ');
+  if(msg)throw new Error(msg);
+  const rr=r.headers.get('x-ratelimit-requests-remaining');
+  if(rr!==null)REST=rr;
+  return j;
+}
+
+/* --- Football --- */
+function trouver(bets,id,nom){return bets.find(function(z){return z.id===id||z.name===nom})}
+// Lit tous les marchés d'un match et fait la moyenne des bookmakers (marge retirée)
+function agreger(e){
+  const cotes=[],ou={},sc={};
+  let bs=0,bn=0,nsc=0;
+  (e.bookmakers||[]).forEach(function(b){
+    const bets=b.bets||[];
+    const w=trouver(bets,1,'Match Winner');
+    if(w){
+      const v=w.values||[];
+      const g=function(k){const z=v.find(function(y){return y.value===k});return z?parseFloat(z.odd):0};
+      const H=g('Home'),N=g('Draw'),A=g('Away');
+      if(H>1&&N>1&&A>1)cotes.push([H,N,A]);
+    }
+    const gb=trouver(bets,5,'Goals Over/Under');
+    if(gb){
+      const L={};
+      (gb.values||[]).forEach(function(v){
+        const m=/^(Over|Under)\s+(\d+(?:\.\d+)?)$/.exec(String(v.value));
+        const o=parseFloat(v.odd);
+        if(!m||!(o>1))return;
+        (L[m[2]]=L[m[2]]||{})[m[1]]=o;
+      });
+      ['1.5','2.5','3.5'].forEach(function(k){
+        if(L[k]&&L[k].Over&&L[k].Under){
+          const a=1/L[k].Over,c=1/L[k].Under;
+          const x=ou[k]||(ou[k]={s:0,n:0});
+          x.s+=a/(a+c);x.n++;
+        }
+      });
+    }
+    const bt=trouver(bets,8,'Both Teams Score');
+    if(bt){
+      const vs=bt.values||[];
+      const y=vs.find(function(z){return z.value==='Yes'}), n=vs.find(function(z){return z.value==='No'});
+      const oy=y?parseFloat(y.odd):0, on=n?parseFloat(n.odd):0;
+      if(oy>1&&on>1){bs+=(1/oy)/(1/oy+1/on);bn++}
+    }
+    const ex=trouver(bets,10,'Exact Score');
+    if(ex){
+      const vs=(ex.values||[]).map(function(z){return {s:String(z.value),i:1/parseFloat(z.odd)}})
+        .filter(function(z){return isFinite(z.i)&&z.i>0&&z.i<1});
+      const tot=vs.reduce(function(a,z){return a+z.i},0);
+      if(vs.length>=6&&tot>0){nsc++;vs.forEach(function(z){sc[z.s]=(sc[z.s]||0)+z.i/tot})}
+    }
+  });
+  const r={cotes:cotes,ou:{}};
+  Object.keys(ou).forEach(function(k){r.ou[k]=ou[k].s/ou[k].n*100});
+  if(bn)r.bt=bs/bn*100;
+  if(nsc)r.sc=Object.keys(sc).map(function(k){return [k,sc[k]/nsc*100]}).sort(function(a,b){return b[1]-a[1]}).slice(0,3);
+  return r;
+}
+function traiter(o,noms,matchs){
+  (o.response||[]).forEach(function(e){
+    const n=noms[e.fixture.id];if(!n)return;
+    if(matchs.some(function(m){return m.id===String(e.fixture.id)}))return;
+    const r=agreger(e);
+    if(r.cotes.length)matchs.push({id:String(e.fixture.id),sport:'foot',ligue:n.ligue,debut:n.debut,dom:n.dom,ext:n.ext,cotes:r.cotes,ou:r.ou,bt:r.bt,sc:r.sc});
+  });
+}
+function ordreLigues(lg){
+  const sel=ligSel(), prio=LIGUES_DISPO.map(function(l){return l[0]});
+  function rang(id){
+    const a=sel.indexOf(id);if(a>-1)return a;
+    const b=prio.indexOf(id);if(b>-1)return 100+b;
+    return 1000-lg[id].nb;
+  }
+  return Object.keys(lg).map(Number).sort(function(a,b){return rang(a)-rang(b)});
+}
+async function parDate(d,noms,matchs){
+  let page=1,total=1;
+  while(page<=total&&page<=MAXPD){
+    const o=await api('/odds?date='+d+'&page='+page,'foot');
+    total=(o.paging&&o.paging.total)||1;
+    traiter(o,noms,matchs);
+    page++;
+  }
+}
+async function depuisFoot(d){
+  NOTE='';
+  const f=await api('/fixtures?date='+d,'foot');
+  const noms={}, lg={};
+  (f.response||[]).forEach(function(x){
+    const id=x.league.id;
+    noms[x.fixture.id]={ligue:x.league.name+(x.league.country?' ('+x.league.country+')':''),debut:x.fixture.date,dom:x.teams.home.name,ext:x.teams.away.name};
+    if(!lg[id])lg[id]={nb:0};
+    lg[id].nb++;
+  });
+  const ordre=ordreLigues(lg);
+  COUV={faits:0,total:ordre.length,u:'championnats'};
+  if(!ordre.length){NOTE='Aucun match trouvé pour cette date.';render();return []}
+  render();
+  const matchs=[];
+  let n=0,repli=false;
+  for(let i=0;i<ordre.length;i++){
+    if(n>=MAXREQ)break;
+    if(REST!==null&&+REST<12){NOTE='Quota du jour presque épuisé : chargement arrêté pour te garder des requêtes.';break}
+    const id=ordre[i];
+    AVANCE='Cotes en cours : championnat '+(i+1)+' sur '+ordre.length+'…';
+    render();
+    try{
+      let page=1,total=1;
+      while(page<=total&&page<=MAXPL&&n<MAXREQ){
+        const o=await api('/odds?date='+d+'&league='+id+'&page='+page,'foot');
+        n++;
+        total=(o.paging&&o.paging.total)||1;
+        traiter(o,noms,matchs);
+        page++;
+      }
+    }catch(e){
+      if(/season/i.test(e.message)&&!matchs.length){repli=true;break}
+      throw e;
+    }
+    COUV.faits=i+1;
+    ANA=matchs.map(analyser);
+    render();
+  }
+  if(repli){
+    NOTE='Mode simplifié : cotes lues par date (30 matchs maximum, championnats non choisis).';
+    AVANCE='Lecture des cotes par date…';
+    render();
+    await parDate(d,noms,matchs);
+    COUV=null;
+    ANA=matchs.map(analyser);
+  }
+  AVANCE='';
+  return matchs;
+}
+
+/* --- Basketball et handball (cotes lues match par match) --- */
+function agregerAutre(bks){
+  const c3=[],c2=[],L={};
+  bks.forEach(function(b){
+    (b.bets||[]).forEach(function(z){
+      const nm=String(z.name||'');
+      if(Object.keys(SEEN).length<14)SEEN[nm]=1;
+      const v=z.values||[];
+      const g=function(k){const y=v.find(function(w){return String(w.value)===k});return y?parseFloat(y.odd):0};
+      if(/^(3way result|match winner)$/i.test(nm)){
+        const H=g('Home'),N=g('Draw'),A=g('Away');
+        if(H>1&&N>1&&A>1)c3.push([H,N,A]);
+      }else if(/^home\/away$/i.test(nm)){
+        const H=g('Home'),A=g('Away');
+        if(H>1&&A>1)c2.push([H,0,A]);
+      }else if(/^over\/under$/i.test(nm)){
+        const T={};
+        v.forEach(function(w){
+          const m=/^(Over|Under)\s+(\d+(?:\.\d+)?)$/i.exec(String(w.value));
+          const od=parseFloat(w.odd);
+          if(!m||!(od>1))return;
+          (T[m[2]]=T[m[2]]||{})[m[1].toLowerCase()]=od;
+        });
+        Object.keys(T).forEach(function(k){
+          if(T[k].over&&T[k].under){
+            const a=1/T[k].over,c=1/T[k].under;
+            const x=L[k]||(L[k]={s:0,n:0});
+            x.s+=a/(a+c);x.n++;
+          }
+        });
+      }
+    });
+  });
+  // ligne principale : celle dont la probabilité de « plus de » est la plus proche de 50 %
+  let best=null,bd=1e9;
+  Object.keys(L).forEach(function(k){
+    const p=L[k].s/L[k].n*100;
+    if(Math.abs(p-50)<bd){bd=Math.abs(p-50);best=k}
+  });
+  const ou={};
+  if(best!==null)ou[best]=L[best].s/L[best].n*100;
+  return {cotes:c3.length?c3:c2,ou:ou};
+}
+async function depuisAutre(d,sp){
+  NOTE='';SEEN={};
+  const f=await api('/games?date='+d,sp);
+  const noms={},par={};
+  (f.response||[]).forEach(function(x){
+    if(x.status&&x.status.short&&/^(FT|AOT|AET|AP|CANC|PST|ABD|AWD|WO)$/i.test(x.status.short))return;
+    const t=x.teams||{}, lid=(x.league&&x.league.id)||0;
+    const pays=x.country&&x.country.name&&x.country.name!=='World'?' ('+x.country.name+')':'';
+    noms[x.id]={ligue:((x.league&&x.league.name)||'Championnat')+pays,
+      debut:x.date||(x.timestamp?new Date(x.timestamp*1000).toISOString():d),
+      dom:(t.home&&t.home.name)||'?',ext:(t.away&&t.away.name)||'?'};
+    (par[lid]=par[lid]||[]).push(x.id);
+  });
+  const ids=[];
+  Object.keys(par).sort(function(a,b){return par[b].length-par[a].length}).forEach(function(k){par[k].forEach(function(id){ids.push(id)})});
+  const lim=Math.min(ids.length,MAXREQ);
+  COUV={faits:0,total:ids.length,u:'matchs'};
+  if(!ids.length){NOTE='Aucun match à venir trouvé pour cette date.';render();return []}
+  render();
+  const matchs=[];
+  for(let i=0;i<lim;i++){
+    if(REST!==null&&+REST<12){NOTE='Quota du jour presque épuisé : chargement arrêté pour te garder des requêtes.';break}
+    AVANCE='Cotes en cours : match '+(i+1)+' sur '+lim+'…';
+    render();
+    try{
+      const o=await api('/odds?game='+ids[i],sp);
+      const bks=[];
+      (o.response||[]).forEach(function(e){(e.bookmakers||[]).forEach(function(b){bks.push(b)})});
+      const r=agregerAutre(bks), n=noms[ids[i]];
+      if(r.cotes.length)matchs.push({id:String(ids[i]),sport:sp,ligue:n.ligue,debut:n.debut,dom:n.dom,ext:n.ext,cotes:r.cotes,ou:r.ou});
+    }catch(e){
+      if(matchs.length){NOTE='Chargement interrompu : '+traduire(e.message);break}
+      throw e;
+    }
+    COUV.faits=i+1;
+    ANA=matchs.map(analyser);
+    render();
+  }
+  AVANCE='';
+  if(!matchs.length){
+    const vus=Object.keys(SEEN);
+    NOTE='Aucune cote exploitable trouvée pour les '+lim+' premiers matchs. '+(vus.length?'Marchés reçus : '+vus.join(', ')+'.':'Aucun marché reçu : les cotes ne sont peut-être pas encore publiées. Essaie « Demain ».');
+  }
+  return matchs;
+}
+
+async function depuisApi(d){
+  return SPORT==='foot'?depuisFoot(d):depuisAutre(d,SPORT);
+}
+
+/* ===== 5) PRÉVISIONS API (football uniquement) ===== */
+let PRED={},RUN=0,PROG='';
+function lirePred(id){
+  try{const c=JSON.parse(lire('c2p_'+id,'null'));if(c&&Date.now()-c.t<DUREE)return c.p}catch(e){}
+  return undefined;
+}
+async function predUne(id){
+  for(let t=0;t<3;t++){
+    try{return await api('/predictions?fixture='+id,'foot')}
+    catch(e){
+      if(/rate|429|many/i.test(e.message)&&t<2){await pause(15000);continue}
+      throw e;
+    }
+  }
+}
+function lireP(j){
+  const r=(j.response||[])[0];
+  const pc=r&&r.predictions&&r.predictions.percent;
+  if(!pc)return null;
+  const f=function(x){return parseFloat(String(x).replace('%',''))};
+  const h=f(pc.home),n=f(pc.draw),v=f(pc.away);
+  return (isNaN(h)||isNaN(n)||isNaN(v))?null:{h:h,n:n,a:v};
+}
+async function affiner(){
+  if(SPORT!=='foot')return;
+  const run=++RUN;
+  PROG='';
+  const top=ANA.slice().sort(function(a,b){return b.pf-a.pf}).slice(0,TOPP);
+  const aFaire=[];
+  top.forEach(function(a){
+    if(String(a.m.id).charAt(0)==='d')return;
+    const c=lirePred(a.m.id);
+    if(c!==undefined)PRED[a.m.id]=c;else aFaire.push(a);
+  });
+  render();
+  for(let i=0;i<aFaire.length;i++){
+    if(run!==RUN)return;
+    if(REST!==null&&+REST<6){PROG='Prévisions API arrêtées : quota du jour presque épuisé.';render();return}
+    const a=aFaire[i];
+    PROG='Prévisions API en cours : '+(i+1)+'/'+aFaire.length+'…';
+    render();
+    try{
+      const p=lireP(await predUne(a.m.id));
+      PRED[a.m.id]=p;
+      ecrire('c2p_'+a.m.id,JSON.stringify({t:Date.now(),p:p}));
+    }catch(e){
+      PROG='Prévisions API interrompues : '+traduire(e.message);
+      render();return;
+    }
+    if(i<aFaire.length-1)await pause(7000);
+  }
+  if(run===RUN){PROG='';render()}
+}
+
+/* ===== 6) ÉTAT ET CHARGEMENT ===== */
+let ONG='fav',VUE='fav',SEUIL=70,FILTRE='tous',PERIODE='auj',ANA=[],MODE='demo',MAJ=null,ERREUR='',CHARGE=false,TEST=[];
+
+async function demarrer(force){
+  if(CHARGE){NOTE='Un chargement est déjà en cours : patiente, ne rappuie pas.';render();return}
+  ERREUR='';NOTE='';RUN++;PROG='';AVANCE='';
+  if(!lire('cleaf','')){
+    MODE='demo';MAJ=null;COUV=null;
+    ANA=(SPORT==='foot')?demo().map(analyser):[];
+    if(SPORT!=='foot')NOTE='Le mode démo existe pour le football seulement. Ajoute ta clé dans Réglages pour les autres sports.';
+    render();return;
+  }
+  MODE='reel';
+  const d=dateJ(PERIODE==='dem'?1:0);
+  const ck='c2_v3_'+SPORT+'_'+d+'_'+(SPORT==='foot'?ligSel().slice().sort(function(a,b){return a-b}).join('-'):'');
+  let cache=null;
+  try{cache=JSON.parse(lire(ck,'null'))}catch(e){}
+  if(cache&&!force&&Date.now()-cache.t<DUREE){ANA=cache.matchs.map(analyser);MAJ=cache.t;COUV=cache.couv||null;render();affiner();return}
+  CHARGE=true;ANA=[];COUV=null;MAJ=null;render();
+  try{
+    const m=await depuisApi(d);
+    ANA=m.map(analyser);MAJ=Date.now();
+    if(m.length)ecrire(ck,JSON.stringify({t:MAJ,matchs:m,couv:COUV}));
+  }catch(e){
+    ERREUR=traduire(e.message);
+    if(!ANA.length&&cache){ANA=cache.matchs.map(analyser);MAJ=cache.t;COUV=cache.couv||null}
+  }
+  CHARGE=false;AVANCE='';render();
+  if(ANA.length)affiner();
+}
+
+async function tester(){
+  TEST=['Test en cours…'];render();
+  const t=[];
+  try{
+    const s=await api('/status','foot');
+    const r=s.response||{};
+    t.push('✅ Clé valide · plan : '+((r.subscription&&r.subscription.plan)||'?'));
+    if(r.requests)t.push('Requêtes aujourd\'hui (football) : '+r.requests.current+' / '+r.requests.limit_day);
+    const d=dateJ(0);
+    try{
+      const f=await api('/fixtures?date='+d,'foot');
+      const lst=f.response||[];
+      const nbL=new Set(lst.map(function(x){return x.league.id})).size;
+      t.push('✅ Football : '+lst.length+' matchs dans '+nbL+' championnats');
+      if(lst.length){
+        try{
+          const p=lireP(await api('/predictions?fixture='+lst[0].fixture.id,'foot'));
+          t.push(p?'✅ Prévisions API disponibles':'⚠️ Prévisions API : réponse vide ou format inattendu');
+        }catch(e){t.push('⚠️ Prévisions API : '+traduire(e.message))}
+      }
+    }catch(e){t.push('⚠️ Football : '+traduire(e.message))}
+    const autres=['basket','hand'];
+    for(let i=0;i<autres.length;i++){
+      const sp=autres[i];
+      try{
+        const g=await api('/games?date='+d,sp);
+        t.push('✅ '+SPORTS[sp].nom+' : '+(g.response||[]).length+' matchs aujourd\'hui');
+      }catch(e){t.push('⚠️ '+SPORTS[sp].nom+' : '+traduire(e.message))}
+    }
+    t.push('Si tout est ✅ : va dans l\'onglet Favoris.');
+  }catch(e){
+    t.push('❌ '+traduire(e.message));
+  }
+  TEST=t;render();
+}
+
+/* ===== 7) AFFICHAGE ===== */
+const AVERT='<div class="avert">Les pourcentages viennent des cotes de plusieurs bookmakers (marge retirée). Pour le football, les favoris sont moyennés avec la prévision d\'API-Football quand elle est disponible. Basketball et handball : cotes d\'avant-match, mises à jour environ une fois par jour. Une probabilité élevée correspond à une petite cote, donc à un petit gain. Aucun pronostic n\'est garanti. Joue avec modération.</div>';
+
+function marches(a){
+  const m=a.m,p=a.p,un=SPORTS[m.sport||'foot'].unite,nul=p[1]>0.5;
+  let h='<details><summary>Tous les marchés</summary><div class="mk">';
+  h+='<div><b>Résultat</b> : '+esc(m.dom)+' '+p[0].toFixed(0)+'%'+(nul?' · Nul '+p[1].toFixed(0)+'%':'')+' · '+esc(m.ext)+' '+p[2].toFixed(0)+'%</div>';
+  if(nul)h+='<div><b>Double chance</b> : 1X '+(p[0]+p[1]).toFixed(0)+'% · X2 '+(p[1]+p[2]).toFixed(0)+'% · 12 '+(p[0]+p[2]).toFixed(0)+'%</div>';
+  const ou=m.ou||{}, ks=Object.keys(ou).sort();
+  if(ks.length)h+='<div><b>Nombre de '+un+'</b><br>'+ks.map(function(k){
+    return 'Plus de '+k+' : '+ou[k].toFixed(0)+'% · Moins de '+k+' : '+(100-ou[k]).toFixed(0)+'%';
+  }).join('<br>')+'</div>';
+  if(typeof m.bt==='number')h+='<div><b>Les 2 équipes marquent</b> : oui '+m.bt.toFixed(0)+'% · non '+(100-m.bt).toFixed(0)+'%</div>';
+  if(m.sc&&m.sc.length)h+='<div><b>Scores exacts probables</b> : '+m.sc.map(function(s){return esc(s[0])+' ('+s[1].toFixed(0)+'%)'}).join(' · ')+'</div>';
+  if(!ks.length&&typeof m.bt!=='number'&&!(m.sc&&m.sc.length))h+='<div>Autres marchés non disponibles pour ce match.</div>';
+  return h+'</div></details>';
+}
+
+function carte(a,i){
+  const f=final(a), t=niveau(f.pc,f.accord), cl=t[0];
+  const col=cl==='forte'?'#22c55e':cl==='moy'?'#facc15':'#f87171';
+  const src=f.pp!==null
+    ?'<div class="detail">Cotes : '+a.pf.toFixed(0)+'% · Prévision API : '+f.pp.toFixed(0)+'%</div>'+
+     (f.accord?'<div class="ok">✅ Les 2 sources sont d\'accord</div>':'<div class="ko">⚠️ Les 2 sources ne sont pas d\'accord : prudence</div>')
+    :'<div class="detail">'+(a.nul>0.5?'Nul '+a.nul.toFixed(0)+'% · ':'')+'Autre équipe '+a.autre.toFixed(0)+'% · '+a.nb+' bookmaker(s)</div>';
+  return '<div class="carte">'+
+    '<div class="ligne"><span class="ligue">'+esc(a.m.ligue)+' · '+esc(quand(a.m.debut))+'</span><span class="tag '+cl+'">'+t[1]+'</span></div>'+
+    '<div class="fav">'+(i+1)+'. '+esc(a.fav)+' <span style="color:'+col+'">'+f.pc.toFixed(0)+'%</span></div>'+
+    '<div class="detail">'+esc(a.m.dom)+' vs '+esc(a.m.ext)+'</div>'+
+    '<div class="barre"><div style="width:'+f.pc.toFixed(0)+'%;background:'+col+'"></div></div>'+
+    src+
+    marches(a)+
+    '<button class="act" data-do="suivre" data-id="'+esc(a.m.id)+'">⭐ Suivre le favori</button>'+
+  '</div>';
+}
+
+function ligneSel(x,i){
+  const a=x.a;
+  return '<div class="carte"><div class="ligne"><span class="ligue">'+esc(a.m.ligue)+' · '+esc(quand(a.m.debut))+'</span><span class="tag forte">'+x.p.toFixed(0)+'%</span></div>'+
+    '<div class="fav">'+(i+1)+'. '+esc(x.n)+'</div>'+
+    '<div class="detail">'+esc(a.m.dom)+' vs '+esc(a.m.ext)+'</div>'+
+    '<div class="barre"><div style="width:'+x.p.toFixed(0)+'%;background:#22c55e"></div></div>'+
+    '<button class="act" data-do="suivre" data-id="'+esc(a.m.id)+'" data-n="'+esc(x.n)+'" data-p="'+Math.round(x.p)+'">⭐ Suivre</button></div>';
+}
+
+function opts(liste,cur){
+  return liste.map(function(o){return '<option value="'+esc(o[0])+'"'+(String(o[0])===String(cur)?' selected':'')+'>'+esc(o[1])+'</option>'}).join('');
+}
+
+function render(){
+  const app=document.getElementById('app');
+  document.querySelectorAll('nav button').forEach(function(b){b.classList.toggle('on',b.dataset.tab===ONG)});
+  let html='';
+  if(ONG==='fav'){
+    if(MODE==='demo')html+='<div class="demo">Mode démo. Pour les vrais matchs : onglet Réglages → colle ta clé API.</div>';
+    else html+='<div class="info">Données réelles'+(MAJ?' · mises à jour à '+new Date(MAJ).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'')+(REST!==null?' · requêtes restantes aujourd\'hui : '+REST:'')+'</div>';
+    if(COUV){
+      const mt=COUV.u==='matchs';
+      html+='<div class="info">'+(mt?'Matchs':'Championnats')+' chargés : '+COUV.faits+' sur '+COUV.total+(mt?'':' qui jouent ce jour-là')+(COUV.faits<COUV.total&&!CHARGE?' (les plus importants en priorité, pour économiser ton quota)':'')+'</div>';
+    }
+    if(AVANCE)html+='<div class="info">'+esc(AVANCE)+'</div>';
+    if(PROG)html+='<div class="info">'+esc(PROG)+'</div>';
+    if(NOTE)html+='<div class="info">'+esc(NOTE)+'</div>';
+    if(ERREUR)html+='<div class="err">'+esc(ERREUR)+'</div>';
+    if(CHARGE&&!ANA.length)html+='<div class="avert">Chargement des matchs… (cela peut prendre 1 à 2 minutes, ne rappuie pas)</div>';
+    const fo=forts();
+    const src=(VUE==='fav')?fo:ANA;
+    const ligues=[...new Set(src.map(function(a){return a.m.ligue}))].sort();
+    if(FILTRE!=='tous'&&ligues.indexOf(FILTRE)<0)FILTRE='tous';
+    html+='<select id="sp">'+opts([['foot','⚽ Football'],['basket','🏀 Basketball'],['hand','🤾 Handball']],SPORT)+'</select>';
+    html+='<select id="p">'+opts([['auj','Aujourd\'hui'],['dem','Demain']],PERIODE)+'</select>';
+    html+='<select id="v">'+opts([['fav','Favoris à confiance forte'],['sel','Meilleures sélections (tous marchés)'],['tous','Tous les matchs']],VUE)+'</select>';
+    if(VUE==='sel')html+='<select id="s">'+opts([[60,'Probabilité minimale : 60 %'],[65,'Probabilité minimale : 65 %'],[70,'Probabilité minimale : 70 %'],[75,'Probabilité minimale : 75 %'],[80,'Probabilité minimale : 80 %'],[90,'Probabilité minimale : 90 %']],SEUIL)+'</select>';
+    html+='<select id="f"><option value="tous">Tous les championnats</option>'+
+      ligues.map(function(l){return '<option value="'+esc(l)+'"'+(l===FILTRE?' selected':'')+'>'+esc(l)+'</option>'}).join('')+'</select>';
+    if(VUE==='sel'){
+      const L=[];
+      ANA.forEach(function(a){
+        if(FILTRE!=='tous'&&a.m.ligue!==FILTRE)return;
+        selections(a).forEach(function(s){if(s[1]>=SEUIL)L.push({a:a,n:s[0],p:s[1]})});
+      });
+      L.sort(function(x,y){return y.p-x.p});
+      html+=L.slice(0,TOPS).map(ligneSel).join('')||(CHARGE?'':'<div class="avert">Aucune sélection à '+SEUIL+' % ou plus pour cette date. Baisse la probabilité minimale ou essaie « Demain ».</div>');
+      if(L.length>TOPS)html+='<div class="info">Top '+TOPS+' sur '+L.length+' sélections</div>';
+    }else{
+      const liste=src.filter(function(a){return FILTRE==='tous'||a.m.ligue===FILTRE}).sort(function(a,b){return final(b).pc-final(a).pc});
+      html+=liste.slice(0,TOP).map(carte).join('')||(CHARGE?'':(VUE==='fav'
+        ?'<div class="avert">Aucun favori à confiance forte pour cette date ('+(ANA.length-fo.length)+' match(s) masqué(s)). Essaie « Meilleures sélections », « Demain » ou actualise plus tard.</div>'
+        :'<div class="avert">Aucun match avec cotes pour cette date. Essaie « Demain » ou utilise le test dans Réglages.</div>'));
+      if(liste.length>TOP)html+='<div class="info">Top '+TOP+' sur '+liste.length+' matchs</div>';
+      if(VUE==='fav'&&liste.length&&ANA.length>fo.length)html+='<div class="info">'+(ANA.length-fo.length)+' match(s) masqué(s) : confiance moyenne ou incertaine</div>';
+    }
+    html+=AVERT;
+  }else if(ONG==='hist'){
+    const h=hist(), j=h.filter(function(x){return x.res!==null}), w=j.filter(function(x){return x.res}).length;
+    const moy=j.length?Math.round(j.reduce(function(s,x){return s+x.pf},0)/j.length):0;
+    html+='<div class="stat">'+(j.length
+      ?'Réussite : <b>'+Math.round(w/j.length*100)+'%</b> ('+w+'/'+j.length+')<br><small>Prévu en moyenne : '+moy+'%</small>'
+      :'Aucun résultat saisi pour le moment')+'</div>';
+    for(let k=h.length-1;k>=0;k--){
+      const x=h[k];
+      html+='<div class="carte"><div class="ligue">'+esc(x.d)+'</div>'+
+        '<div class="fav">'+esc(x.fav)+' · '+x.pf+'%</div>'+
+        '<div class="detail">'+esc(x.match)+'</div>'+
+        (x.res===null
+          ?'<button class="act" data-do="gagne" data-k="'+k+'">✅ Gagné</button><button class="act non" data-do="perdu" data-k="'+k+'">❌ Perdu</button>'
+          :'<div class="detail" style="margin-top:6px">'+(x.res?'✅ Gagné':'❌ Perdu')+'</div>')+
+      '</div>';
+    }
+    if(h.length)html+='<div style="text-align:center"><button class="act gris" data-do="vider">Vider l\'historique</button></div>';
+    html+=AVERT;
+  }else{
+    const cle=lire('cleaf',''), sel=ligSel();
+    html+='<div class="carte"><div class="fav">Clé API-Sports</div>'+
+      '<div class="detail">'+(cle?'Clé enregistrée : '+esc(cle.slice(0,4))+'••••':'Aucune clé : le mode démo est actif.')+'</div>'+
+      '<input id="cle" type="text" placeholder="Colle ta clé ici" autocomplete="off">'+
+      '<button class="act" data-do="cle">Enregistrer et tester</button>'+
+      (cle?'<button class="act gris" data-do="tester">Tester</button><button class="act gris" data-do="maj">Actualiser</button><button class="act non" data-do="demo">Mode démo</button>':'')+
+      (TEST.length?'<div class="test">'+TEST.map(esc).join('<br>')+'</div>':'')+
+    '</div>'+
+    '<div class="carte"><div class="fav">Football : championnats prioritaires (facultatif)</div>'+
+      '<div class="detail">L\'appli charge automatiquement les championnats qui jouent le jour choisi, en commençant par ceux que tu coches ici, puis par les grands championnats. Elle s\'arrête après '+MAXREQ+' requêtes de cotes. Si tu coches quelque chose, appuie ensuite sur Actualiser.</div>'+
+      LIGUES_DISPO.map(function(l){
+        return '<label class="cb"><input type="checkbox" data-lg="'+l[0]+'"'+(sel.indexOf(l[0])>-1?' checked':'')+'> '+esc(l[1])+'</label>';
+      }).join('')+
+      '<button class="act" data-do="maj">Actualiser</button>'+
+    '</div>'+
+    '<div class="avert">La clé reste sur ton téléphone, jamais dans le fichier. Le plan gratuit permet 100 requêtes par jour et 10 par minute. Un chargement utilise au maximum '+(1+MAXREQ)+' requêtes de données, plus '+TOPP+' pour les prévisions (football). Les résultats sont gardés 6 h. Le tennis n\'est pas disponible avec ce compte.</div>';
+  }
+  app.innerHTML=html;
+}
+
+/* ===== 8) ACTIONS ===== */
+document.addEventListener('click',function(e){
+  const b=e.target.closest('button');if(!b||!b.dataset.do)return;
+  const d=b.dataset.do;
+  if(d==='tab'){ONG=b.dataset.tab;render();return}
+  if(d==='cle'){
+    const v=document.getElementById('cle').value.trim();
+    if(v.length<10){alert('Clé trop courte. Copie-la en entier depuis ton tableau de bord.');return}
+    ecrire('cleaf',v);viderCaches();PRED={};tester();return;
+  }
+  if(d==='tester'){tester();return}
+  if(d==='maj'){ONG='fav';PRED={};demarrer(true);return}
+  if(d==='demo'){suppr('cleaf');viderCaches();PRED={};TEST=[];ONG='fav';demarrer(false);return}
+  const h=hist();
+  if(d==='suivre'){
+    const id=b.dataset.id, a=ANA.find(function(x){return String(x.m.id)===id});if(!a)return;
+    const nom=b.dataset.n||a.fav;
+    const pf=b.dataset.p?+b.dataset.p:Math.round(final(a).pc);
+    if(h.some(function(x){return String(x.id)===id&&x.d===jour()&&x.fav===nom})){alert('Déjà suivi aujourd\'hui.');return}
+    h.push({id:id,d:jour(),match:SPORTS[a.m.sport||'foot'].icone+' '+a.m.dom+' vs '+a.m.ext,fav:nom,pf:pf,res:null});
+    sauverHist(h);alert('Ajouté à l\'historique.');
+  }else if(d==='gagne'||d==='perdu'){
+    h[+b.dataset.k].res=(d==='gagne');sauverHist(h);render();
+  }else if(d==='vider'){
+    if(confirm('Effacer tout l\'historique ?')){sauverHist([]);render()}
+  }
+});
+document.addEventListener('change',function(e){
+  const id=e.target.id;
+  if(id==='f'){FILTRE=e.target.value;render();return}
+  if(id==='v'){VUE=e.target.value;FILTRE='tous';render();return}
+  if(id==='s'){SEUIL=+e.target.value;render();return}
+  if(id==='sp'){
+    if(CHARGE){render();return}
+    SPORT=e.target.value;ecrire('sport',SPORT);FILTRE='tous';demarrer(false);return;
+  }
+  if(id==='p'){
+    if(CHARGE){render();return}
+    PERIODE=e.target.value;demarrer(false);return;
+  }
+  if(e.target.dataset&&e.target.dataset.lg){
+    const lid=+e.target.dataset.lg;
+    let s=ligSel();
+    s=e.target.checked?s.concat([lid]):s.filter(function(x){return x!==lid});
+    ecrire('ligues',JSON.stringify([...new Set(s)]));
+    viderDates();FILTRE='tous';
+  }
+});
+
+/* ===== 9) DÉMARRAGE ===== */
+document.getElementById('date').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+viderAnciens();
+demarrer(false);
+
+/* ===== 10) INSTALLATION (application) ===== */
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}
+</script>
+</body>
+</html>
