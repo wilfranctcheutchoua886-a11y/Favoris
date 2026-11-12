@@ -77,7 +77,8 @@
       '<button class="act" data-do="c_maj">Actualiser mon compte</button>' +
       '<button class="act gris" data-do="c_out">Se déconnecter</button>' + (MSG ? '<div class="test">' + esc(MSG) + '</div>' : '') + '</div>';
     h += '<div class="carte"><div class="fav">💎 Les offres</div>' +
-      '<div class="detail"><b>Simple</b> : favoris football à confiance forte.<br><b>Gold</b> : Simple + tous les marchés, basketball et handball.<br><b>Premium</b> : Gold + matchs en direct et statistiques.</div>' +
+      '<div class="detail"><b>Simple</b> : favoris football à confiance forte.<br><b>Gold</b> : Simple + tous 
+            '<div class="detail"><b>Simple</b> — 2 000 FCFA / 30 jours<br>Favoris football à confiance forte.<br><br><b>Gold</b> — 5 000 FCFA / 30 jours<br>Simple + basketball et handball.<br><br><b>Premium</b> — 8 000 FCFA / 30 jours<br>Gold + matchs en direct.<br><br>Paiement par MTN Mobile Money ou Orange Money : appuie sur le bouton ci-dessous.</div>' +
       (CONTACT ? '<a href="' + esc(CONTACT) + '" style="display:inline-block;margin-top:10px;padding:10px 14px;border-radius:8px;background:#22c55e;color:#000;font-weight:bold;text-decoration:none">S\'abonner ou renouveler</a>'
         : '<div class="detail" style="margin-top:8px">Pour t\'abonner ou renouveler, contacte le support.</div>') + '</div>';
     h += AVERT;
