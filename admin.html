@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Administration</title>
+<style>
+body{margin:0;padding:16px;background:#0f172a;color:#fff;font-family:sans-serif}
+h1{font-size:20px}
+input,select,button{width:100%;padding:12px;font-size:16px;border-radius:8px;border:0;margin:6px 0;box-sizing:border-box}
+button{background:#22c55e;color:#000;font-weight:bold}
+#r{margin-top:12px;padding:10px;background:#1e293b;border-radius:8px;white-space:pre-wrap;font-size:14px;line-height:1.5}
+</style>
+</head>
+<body>
+<h1>🔧 Administration</h1>
+<div id="etat"></div>
+<input id="e" type="email" placeholder="E-mail du client">
+<select id="p">
+  <option value="simple">Simple</option>
+  <option value="gold">Gold</option>
+  <option value="premium">Premium</option>
+  <option value="free">Retirer l'offre</option>
+</select>
+<select id="d">
+  <option value="7">7 jours</option>
+  <option value="30" selected>30 jours</option>
+  <option value="90">90 jours</option>
+  <option value="365">365 jours</option>
+</select>
+<button id="ok">Activer</button>
+<button id="voir" style="background:#334155;color:#fff">Voir ce compte</button>
+<div id="r"></div>
+<script>
+var S='https://favoris-api.wilfranctcheutchoua886.workers.dev';
+var T=''; try{T=localStorage.getItem('srv_tok')||''}catch(e){}
+var $=function(i){return document.getElementById(i)};
+$('etat').textContent=T?'Connecté (compte du navigateur).':'Pas connecté : ouvre d\'abord client.html et connecte-toi avec ton compte administrateur.';
+function aff(j){
+  if(j.errors){$('r').textContent='❌ '+(j.errors.serveur||'Erreur');return}
+  var f=j.exp>Date.now()?new Date(j.exp).toLocaleDateString('fr-FR'):'expiré';
+  $('r').textContent='✅ '+j.email+'\nOffre : '+j.plan+'\nJusqu\'au : '+f;
+}
+function appel(chemin,corps){
+  $('r').textContent='Un instant…';
+  var o={headers:{Authorization:'Bearer '+T,'Content-Type':'application/json'}};
+  if(corps){o.method='POST';o.body=JSON.stringify(corps)}
+  fetch(S+chemin,o).then(function(r){return r.json()}).then(aff).catch(function(){$('r').textContent='❌ Connexion impossible.'});
+}
+$('ok').onclick=function(){appel('/admin/setplan',{email:$('e').value.trim(),plan:$('p').value,days:+$('d').value})};
+$('voir').onclick=function(){appel('/admin/user?email='+encodeURIComponent($('e').value.trim()))};
+</script>
+</body>
+</html>
