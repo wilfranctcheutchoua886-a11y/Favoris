@@ -41,6 +41,7 @@
       '<div style="font-size:14px;color:#94a3b8;margin-bottom:14px">Connecte-toi ou crée un compte. Nouveau compte : 3 jours d\'essai gratuit.</div>' +
       '<input id="ce" type="email" autocomplete="email" placeholder="Adresse e-mail" style="' + inp + '">' +
       '<input id="cp" type="password" autocomplete="current-password" placeholder="Mot de passe (8 caractères minimum)" style="' + inp + '">' +
+      '<label style="display:flex;gap:8px;align-items:flex-start;text-align:left;font-size:13px;color:#cbd5e1;margin:8px 0 2px"><input id="ca" type="checkbox" style="margin-top:3px;width:18px;height:18px"><span>Je confirme avoir 18 ans ou plus et j\'accepte les conditions d\'utilisation (pour créer un compte).</span></label>' +
       '<button id="cl" style="' + btn + 'background:#22c55e;color:#000">Se connecter</button>' +
       '<button id="cn" style="' + btn + 'background:#334155;color:#fff">Créer un compte (essai gratuit)</button>' +
       '<div id="cm" style="min-height:20px;margin-top:10px;font-size:13px;color:#facc15">' + (info || '') + '</div>' +
@@ -61,7 +62,10 @@
         .catch(function () { OCC = false; $('cm').textContent = 'Connexion impossible. Vérifie ton Internet.'; });
     }
     $('cl').addEventListener('click', function () { aller('/login'); });
-    $('cn').addEventListener('click', function () { aller('/register'); });
+    $('cn').addEventListener('click', function () {
+      if (!$('ca').checked) { $('cm').textContent = 'Coche la case : tu dois avoir 18 ans ou plus.'; return; }
+      aller('/register');
+    });
   }
   function sortir(info) { TOKEN = ''; USER = null; effacer(); ANA = []; ecran(info); }
 
