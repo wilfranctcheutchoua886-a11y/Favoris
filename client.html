@@ -14,7 +14,7 @@ fetch('index.html?v=' + Date.now(), { cache: 'no-store' })
     t = t.replace('<script src="verrou.js"><\/script>', '')
          .replace('manifest.json', 'manifest-client.json')
          .replace('</html>', '')
-         + '<script src="compte.js"><\/script></html>';
+         + '<script src="compte.js"><\/script><script src="limite.js"><\/script></html>';
     document.open(); document.write(t); document.close();
   })
   .catch(function () { document.body.textContent = 'Connexion impossible. Vérifie ton Internet.'; });
