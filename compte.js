@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var SERVEUR = 'https://favoris-api.wilfranctcheutchoua886.workers.dev';
-  var CONTACT = ''; /* ex. https://wa.me/237XXXXXXXXX : lien WhatsApp pour s'abonner */
+    var CONTACT = 'https://wa.me/237659447221?text=Bonjour%2C%20je%20veux%20m%27abonner%20%C3%A0%20Kevin%20pronos.'; /* lien WhatsApp pour s'abonner */
   var K_T = 'srv_tok', K_U = 'srv_user';
   var TOKEN = '', USER = null, OCC = false, MSG = '';
   try { TOKEN = localStorage.getItem(K_T) || ''; USER = JSON.parse(localStorage.getItem(K_U) || 'null'); } catch (e) {}
