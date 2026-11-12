@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var SERVEUR = 'https://favoris-api.wilfranctcheutchoua886.workers.dev';
-    var CONTACT = 'https://wa.me/237659447221?text=Bonjour%2C%20je%20veux%20m%27abonner%20%C3%A0%20Kevin%20pronos.'; /* lien WhatsApp pour s'abonner */
+  var CONTACT = 'https://wa.me/237659447221?text=Bonjour%2C%20je%20veux%20m%27abonner%20%C3%A0%20Kevin%20pronos.'; /* lien WhatsApp pour s'abonner */
   var K_T = 'srv_tok', K_U = 'srv_user';
   var TOKEN = '', USER = null, OCC = false, MSG = '';
   try { TOKEN = localStorage.getItem(K_T) || ''; USER = JSON.parse(localStorage.getItem(K_U) || 'null'); } catch (e) {}
@@ -77,11 +77,11 @@
       '<button class="act" data-do="c_maj">Actualiser mon compte</button>' +
       '<button class="act gris" data-do="c_out">Se déconnecter</button>' + (MSG ? '<div class="test">' + esc(MSG) + '</div>' : '') + '</div>';
     h += '<div class="carte"><div class="fav">💎 Les offres</div>' +
-      '<div class="detail"><b>Simple</b> : favoris football à confiance forte.<br><b>Gold</b> : Simple + tous 
-            '<div class="detail"><b>Simple</b> — 2 000 FCFA / 30 jours<br>Favoris football à confiance forte.<br><br><b>Gold</b> — 5 000 FCFA / 30 jours<br>Simple + basketball et handball.<br><br><b>Premium</b> — 8 000 FCFA / 30 jours<br>Gold + matchs en direct.<br><br>Paiement par MTN Mobile Money ou Orange Money : appuie sur le bouton ci-dessous.</div>' +
+      '<div class="detail"><b>Simple</b> — 2 000 FCFA / 30 jours<br>Favoris football à confiance forte.<br><br><b>Gold</b> — 5 000 FCFA / 30 jours<br>Simple + basketball et handball.<br><br><b>Premium</b> — 8 000 FCFA / 30 jours<br>Gold + matchs en direct.<br><br>Paiement par MTN Mobile Money ou Orange Money : appuie sur le bouton ci-dessous.</div>' +
       (CONTACT ? '<a href="' + esc(CONTACT) + '" style="display:inline-block;margin-top:10px;padding:10px 14px;border-radius:8px;background:#22c55e;color:#000;font-weight:bold;text-decoration:none">S\'abonner ou renouveler</a>'
         : '<div class="detail" style="margin-top:8px">Pour t\'abonner ou renouveler, contacte le support.</div>') + '</div>';
     h += AVERT;
+    h += '<div class="avert"><b>Conditions d\'utilisation</b><br>• Réservé aux personnes de 18 ans et plus.<br>• Les pourcentages sont des estimations calculées à partir des cotes des bookmakers. Ce ne sont pas des garanties : aucun résultat n\'est sûr, et tu peux perdre de l\'argent si tu paries.<br>• N\'engage que de l\'argent que tu peux te permettre de perdre. Le jeu doit rester un loisir.<br>• Cette application ne propose pas de paris : elle donne seulement une information.<br>• L\'abonnement ne se rembourse pas une fois activé. Il n\'est pas renouvelé automatiquement.</div>';
     document.getElementById('app').innerHTML = h;
   }
   var baseRender = render;
