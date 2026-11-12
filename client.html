@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Favoris du jour</title>
+<style>body{margin:0;background:#0f172a;color:#94a3b8;font-family:sans-serif;text-align:center;padding-top:40vh}</style>
+</head>
+<body>Chargement…
+<script>
+fetch('index.html?v=' + Date.now(), { cache: 'no-store' })
+  .then(function (r) { return r.text(); })
+  .then(function (t) {
+    t = t.replace('<script src="verrou.js"><\/script>', '')
+         .replace('manifest.json', 'manifest-client.json')
+         .replace('</html>', '')
+         + '<script src="compte.js"><\/script></html>';
+    document.open(); document.write(t); document.close();
+  })
+  .catch(function () { document.body.textContent = 'Connexion impossible. Vérifie ton Internet.'; });
+</script>
+</body>
+</html>
