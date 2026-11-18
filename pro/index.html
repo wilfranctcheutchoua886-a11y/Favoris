@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pronos Pro</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b1220">
+<link rel="icon" href="../icon-192.png">
+<style>
+:root{--bg:#0b1220;--card:#131c2e;--card2:#192541;--line:#22304d;--txt:#e6edf7;--mut:#8aa0bd;--ok:#22c55e;--mid:#f5b301;--bad:#ef4444;--acc:#3b82f6}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.4 system-ui,sans-serif}
+header{position:sticky;top:0;z-index:20;background:rgba(11,18,32,.96);backdrop-filter:blur(8px);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+header h1{font-size:18px;margin:0}header small{color:var(--mut);display:block;font-size:12px}
+.quota{font-size:12px;background:var(--card);border:1px solid var(--line);padding:4px 9px;border-radius:99px;color:var(--mut)}
+main{padding:12px 12px 90px;max-width:720px;margin:auto}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:#0e1628;border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;border:0;color:var(--mut);padding:9px 2px 8px;font-size:11px}
+nav button span{display:block;font-size:20px}nav button.on{color:#fff;box-shadow:inset 0 2px 0 var(--acc)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin:0 0 10px}
+.card.clic{cursor:pointer}.card h2{font-size:15px;margin:0 0 8px}
+.mut{color:var(--mut);font-size:12px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 4px;text-align:center}
+.kpi b{display:block;font-size:20px}.kpi span{font-size:11px;color:var(--mut)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
+.chip{flex:none;background:var(--card);border:1px solid var(--line);color:var(--txt);padding:7px 12px;border-radius:99px;font-size:13px}
+.chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn{background:var(--acc);color:#fff;border:0;border-radius:12px;padding:10px 14px;font-size:14px;font-weight:600}
+.btn.g{background:var(--card2);color:var(--txt);border:1px solid var(--line)}.btn.s{padding:7px 10px;font-size:13px}.btn.r{background:#7f1d1d}
+.btn.w{width:100%}
+.row{display:flex;align-items:center;gap:10px}.row .mid{flex:1;min-width:0}
+.ring{--c:var(--ok);flex:none;width:50px;height:50px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p)*1%),#243556 0);display:grid;place-items:center}
+.ring b{width:40px;height:40px;border-radius:50%;background:var(--card);display:grid;place-items:center;font-size:13px}
+.t1{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cote{flex:none;text-align:right;font-weight:700}.cote small{display:block;color:var(--mut);font-weight:400;font-size:11px}
+.badge{display:inline-block;font-size:11px;padding:2px 7px;border-radius:99px;background:#243556;color:#cbd9ee;margin-right:4px}
+.badge.ok{background:#14532d;color:#86efac}.badge.mid{background:#713f12;color:#fde68a}.badge.bad{background:#7f1d1d;color:#fecaca}.badge.val{background:#312e81;color:#c7d2fe}
+.bar{height:6px;background:#243556;border-radius:4px;overflow:hidden;margin:5px 0}.bar i{display:block;height:100%}
+details.grp{margin:0 0 10px}details.grp>summary{list-style:none;cursor:pointer;background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:11px 12px;font-weight:700;display:flex;justify-content:space-between}
+details.grp>summary::-webkit-details-marker{display:none}details.grp[open]>summary{border-bottom-left-radius:0;border-bottom-right-radius:0}
+details.grp .in{border:1px solid var(--line);border-top:0;border-radius:0 0 14px 14px;padding:8px;background:#0f1829}
+.in .card{margin-bottom:8px}
+input,select{width:100%;background:#0f1829;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:15px}
+label.l{display:block;margin:10px 0 4px;font-size:13px;color:var(--mut)}
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+#feuille{position:fixed;inset:0;z-index:40;display:none;background:rgba(0,0,0,.6)}
+#feuille.on{display:block}
+#feuille .box{position:absolute;left:0;right:0;bottom:0;max-height:88vh;overflow:auto;background:var(--bg);border-radius:20px 20px 0 0;padding:14px 12px 30px;border-top:1px solid var(--line)}
+.toast{position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:60;background:#166534;color:#fff;padding:10px 14px;border-radius:12px;max-width:92%;text-align:center;font-size:14px;white-space:pre-line}
+.banner{background:#1e3a8a;border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:14px}
+.banner.e{background:#7f1d1d}
+.vide{text-align:center;color:var(--mut);padding:26px 10px}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 4px;text-align:left;border-bottom:1px solid var(--line)}th{color:var(--mut);font-weight:500}
+#splash{position:fixed;inset:0;z-index:99;background:var(--bg);display:grid;place-items:center;text-align:center;transition:opacity .4s}
+#splash div{font-size:54px}#splash p{color:var(--mut)}
+</style>
+</head>
+<body>
+<div id="app">
+  <header><div><h1>🏆 Pronos Pro</h1><small id="sous"></small></div><div class="quota" id="quota">Requêtes : ?</div></header>
+  <main id="vue"></main>
+  <nav id="nav">
+    <button data-a="tab" data-v="home"><span>🏠</span>Accueil</button>
+    <button data-a="tab" data-v="matchs"><span>⚽</span>Matchs</button>
+    <button data-a="tab" data-v="paris"><span>🎯</span>Mes paris</button>
+    <button data-a="tab" data-v="stats"><span>📊</span>Stats</button>
+    <button data-a="tab" data-v="reg"><span>⚙️</span>Réglages</button>
+  </nav>
+  <div id="feuille"></div>
+</div>
+<div id="splash"><div><div>🏆</div><b>Pronos Pro</b><p>Chargement…</p></div></div>
+<script src="moteur.js"></script>
+<script src="app.js"></script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}</script>
+<script src="../noms.js"></script>
+</body>
+      </html>
