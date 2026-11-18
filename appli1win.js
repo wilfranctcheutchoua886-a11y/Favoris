@@ -1,11 +1,15 @@
-/* Ouvre l'appli 1win installée (au lieu du site). À charger APRÈS parier.js. */
+/* Lance l'appli 1win installée (comme l'icône). À charger APRÈS parier.js. */
 (function () {
   'use strict';
   function pkg() { return (lire('parier_pkg', '') || '').trim(); }
   function intention(u) {
+    var p = pkg();
+    if (p) {
+      return 'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=' + p +
+        ';S.browser_fallback_url=' + encodeURIComponent(u) + ';end';
+    }
     var a; try { a = new URL(u); } catch (e) { return null; }
-    return 'intent://' + a.host + a.pathname + a.search + '#Intent;scheme=' + a.protocol.replace(':', '') + ';action=android.intent.action.VIEW;' +
-      (pkg() ? 'package=' + pkg() + ';' : '') + 'S.browser_fallback_url=' + encodeURIComponent(u) + ';end';
+    return 'intent://' + a.host + a.pathname + a.search + '#Intent;scheme=' + a.protocol.replace(':', '') + ';action=android.intent.action.VIEW;S.browser_fallback_url=' + encodeURIComponent(u) + ';end';
   }
   var ouvrir = window.open;
   window.open = function (u) {
