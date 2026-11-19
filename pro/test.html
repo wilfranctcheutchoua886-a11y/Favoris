@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Test API</title>
+<style>body{font:15px sans-serif;background:#0b1220;color:#e6edf7;padding:14px}button{font-size:17px;padding:12px 16px;border:0;border-radius:12px;background:#3b82f6;color:#fff;width:100%}pre{white-space:pre-wrap;word-break:break-word;background:#131c2e;padding:10px;border-radius:10px;font-size:13px}</style></head>
+<body>
+<h3>Test API-Sports (1 requête)</h3>
+<p id="k"></p>
+<button id="b">Lancer le test</button>
+<pre id="o">En attente…</pre>
+<script>
+var cle = ''; try { cle = localStorage.getItem('cleaf') || ''; } catch (e) {}
+document.getElementById('k').textContent = cle ? 'Clé trouvée : ' + cle.slice(0, 4) + '••••' + cle.slice(-3) + ' (' + cle.length + ' caractères)' : 'AUCUNE clé trouvée sur ce téléphone';
+document.getElementById('b').onclick = async function () {
+  var o = document.getElementById('o'); o.textContent = 'Requête en cours…';
+  var d = new Date(), j = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  try {
+    var r = await fetch('https://v3.football.api-sports.io/status', { headers: { 'x-apisports-key': cle } });
+    var t = await r.text(), h = [];
+    r.headers.forEach(function (v, k) { if (/ratelimit|remaining|limit/i.test(k)) h.push(k + ': ' + v); });
+    o.textContent = 'STATUT HTTP : ' + r.status + '\n' + h.join('\n') + '\n\nREPONSE :\n' + t.slice(0, 900);
+    var r2 = await fetch('https://v3.football.api-sports.io/odds?date=' + j + '&page=1', { headers: { 'x-apisports-key': cle } });
+    var t2 = await r2.text();
+    o.textContent += '\n\n--- COTES ' + j + ' ---\nSTATUT HTTP : ' + r2.status + '\nREPONSE :\n' + t2.slice(0, 600);
+  } catch (e) { o.textContent = 'ERREUR : ' + e.message; }
+};
+</script></body></html>
