@@ -1,4 +1,4 @@
-Z<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
@@ -54,7 +54,7 @@ label.l{display:block;margin:10px 0 4px;font-size:13px;color:var(--mut)}
 .vide{text-align:center;color:var(--mut);padding:26px 10px}
 table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 4px;text-align:left;border-bottom:1px solid var(--line)}th{color:var(--mut);font-weight:500}
 #splash{position:fixed;inset:0;z-index:99;background:var(--bg);display:grid;place-items:center;text-align:center;transition:opacity .4s}
-#splash div{font-size:54px}#splash p{color:var(--mut)}
+#splash .lg{font-size:54px}#splash p{color:var(--mut);font-size:15px;margin:6px 0 0}#splash b{font-size:22px}
 </style>
 </head>
 <body>
@@ -70,9 +70,11 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 4px;t
   </nav>
   <div id="feuille"></div>
 </div>
-<div id="splash"><div><div>🏆</div><b>Pronos Pro</b><p>Chargement…</p></div></div>
- <script src="correctif.js"></script> 
+<div id="splash"><div><div class="lg">🏆</div><b>Pronos Pro</b><p>Chargement…</p></div></div>
+<script>window.addEventListener("error",function(e){var p=document.querySelector("#splash p");if(p)p.textContent="Erreur : "+e.message+" ("+String(e.filename).split("/").pop()+":"+e.lineno+")"})</script>
+<script src="correctif.js"></script>
 <script src="moteur.js"></script>
+<script src="app.js"></script>
 <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}</script>
 <script src="../noms.js"></script>
 </body>
